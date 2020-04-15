@@ -1,0 +1,15 @@
+{
+  "name": "sandbox.js",
+  "version": "1.0.0",
+  "description": "Javascript VM",
+  "main": "dist/sandbox.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node build/build.js"
+  },
+  "author": "kanrence",
+  "license": "MIT",
+  "devDependencies": {
+    "webpack": "^4.42.1"
+  }
+}
