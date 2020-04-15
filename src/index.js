@@ -110,9 +110,15 @@ function Scope() {
     this.type = "";
 }
 
+function pushoprs() {
+    this.oprs.push.apply(this.oprs,arguments);
+    return this;
+}
+
 function structnode() {
     this.structname = '';
     this.oprs = [];
+    this.pushoprs = pushoprs;
 }
 
 function funcnode() {
@@ -140,6 +146,7 @@ function funcnode() {
 }
 
 function findscope(id,scope) {
+    //console.log(scope,id)
     var cur = scope;
     while(cur) {
         if(typeof cur.table == 'object') {
@@ -155,6 +162,12 @@ function findscope(id,scope) {
         cur = cur.prev;
     }
     throw new Error(id+" is not defined");
+}
+
+function createSN(name) {
+    let sn = new structnode();
+    sn.structname = name;
+    return sn;
 }
 
 var globalfunc = new funcnode();
@@ -185,34 +198,18 @@ var grammar = {
         return a;
     }],
 	"Literal" : ["NullLiteral | BooleanLiteral | NumericLiteral | StringLiteral",[function(n){
-        var sn = new structnode();
-        sn.structname = 'nullliter';
-        return sn;
+        return createSN('nullliter');
     },function(b) {
-        var sn = new structnode();
-        sn.structname = 'boolliter'
-        sn.oprs.push(b)
-        return sn;
+        return createSN('boolliter').pushoprs(b);
     },function(num) {
-        var sn = new structnode();
-        sn.structname = 'numliter';
-        sn.oprs.push(num);
-        return sn;
+        return createSN('numliter').pushoprs(num);
     },function(str) {
-        var sn = new structnode();
-        sn.structname = 'strliter';
-        sn.oprs.push(str.slice(1,str.length-1));
-        return sn;
+        return createSN('strliter').pushoprs(str.slice(1,str.length-1));
     }]],
 	"PrimaryExpression" : ["this | Identifier | Literal | ArrayLiteral | ObjectLiteral | '(' Expression ')'",[function(t) {
-        var sn = new structnode();
-        sn.structname = 'this';
-        return sn;
+        return createSN('this');
     },function(id) {
-        var sn = new structnode();
-        sn.structname = 'id';
-        sn.oprs.push(id);
-        return sn;
+        return createSN('id').pushoprs(id);
     },function(liter) {
         return liter;
     },function(arrliter) {
@@ -223,8 +220,7 @@ var grammar = {
         return e;
     }]],
 	"ArrayLiteral" : ["'[' Elision ? ']' | '[' ElementList ']' | '[' ElementList ',' Elision ? ']'",[function(lq,e,rq) {
-        var sn = new structnode();
-        sn.structname = 'arrliter';
+        var sn = createSN('arrliter');
         if(e != 'GRAMMAR_EMPTY') {
             for(var i=0;i<e.length;i++) {
                 sn.oprs.push(undefined)
@@ -232,13 +228,11 @@ var grammar = {
         };
         return sn;
     },function(lq,elist,rq) {
-        var sn = new structnode();
-        sn.structname = 'arrliter';
+        var sn = createSN('arrliter');
         sn.oprs = elist;
         return sn;
     },function(lq,elist,comma,e,rq) {
-        var sn = new structnode();
-        sn.structname = 'arrliter';
+        var sn = createSN('arrliter');
         sn.oprs = elist;
         if(e != 'GRAMMAR_EMPTY') {
             for(var i=0;i<e.length;i++) {
@@ -272,17 +266,13 @@ var grammar = {
         return e;
     }]],
 	"ObjectLiteral" : ["'{' '}' | '{' PropertyNameAndValueList '}' | '{' PropertyNameAndValueList ',' '}'",[function() {
-        var sn = new structnode();
-        sn.structname = 'objliter';
-        return sn;
+        return createSN('objliter');
     },function(lq,pvlist) {
-        var sn = new structnode();
-        sn.structname = 'objliter';
+        var sn = createSN('objliter');
         sn.oprs = pvlist;
         return sn;
     },function(lq,pvlist) {
-        var sn = new structnode();
-        sn.structname = 'objliter';
+        var sn = createSN('objliter');
         sn.oprs = pvlist;
         return sn;
     }]],
@@ -293,94 +283,47 @@ var grammar = {
         return pvlist;
     }]],
 	"PropertyAssignment" : ["PropertyName ':' AssignmentExpression | get PropertyName '(' ')' '{' FunctionBody '}' | set PropertyName '(' PropertySetParameterList ')' '{' FunctionBody '}'",[function(p,colon,a) {
-        var sn = new structnode();
-        sn.structname = 'propertyassignment';
-        sn.oprs.push(p);
-        sn.oprs.push(a);
-        return sn;
+        return createSN('propertyassignment').pushoprs(p,a);
     }]],
 	"PropertyName" : ["IdentifierName | StringLiteral | NumericLiteral",[function(a) {
         return a;
     },function(str) {
-        var sn = new structnode();
-        sn.structname = 'strliter';
-        sn.oprs.push(str.slice(1,str.length-1));
-        return sn;
+        return createSN('strliter').pushoprs(str.slice(1,str.length-1));
     },function(num) {
-        var sn = new structnode();
-        sn.structname = 'numliter';
-        sn.oprs.push(num);
-        return sn;
+        return createSN('numliter').pushoprs(num);
     }]],
 	"PropertySetParameterList" : ["Identifier",function(a) {
-        var sn = new structnode();
-        sn.structname = 'id';
-        sn.oprs.push(a);
-        return sn;
+        return createSN('id').pushoprs(a);
     }],
 	"MemberExpression" : ["PrimaryExpression | FunctionExpression | MemberExpression '[' Expression ']' | MemberExpression '.' IdentifierName | new MemberExpression Arguments",[function(pe) {
         return pe;
     },function(fe) {
         return fe;
     },function(me,lq,e,rq) {
-        var sn = new structnode();
-        sn.structname = 'memberexp';
-        sn.oprs.push(me);
-        sn.oprs.push(e);
-        return sn;
+        return createSN('memberexp').pushoprs(me,e);
     },function(me,dot,id) {
-        var sn = new structnode();
-        sn.structname = 'memberexp';
-        sn.oprs.push(me);
-        sn.oprs.push(id);
-        return sn;
+        return createSN('memberexp').pushoprs(me,id);
     },function(n,me,arg) {
-        var sn = new structnode();
-        sn.structname = 'new';
-        sn.oprs.push(me);
-        sn.oprs.push(arg);
-        return sn;
+        return createSN('new').pushoprs(me,arg);
     }]],
 	"NewExpression" : ["MemberExpression | new NewExpression",[function(me) {
         return me;
     },function(n,ne) {
-        var sn = new structnode();
-        sn.structname = 'new';
-        sn.oprs.push(ne);
-        return sn;
+        return createSN('new').pushoprs(ne);
     }]],
 	"CallExpression" : ["MemberExpression Arguments | CallExpression Arguments | CallExpression '[' Expression ']' | CallExpression '.' IdentifierName",[function(me,arg) {
-        var sn = new structnode();
-        sn.structname = 'call';
-        sn.oprs.push(me);
-        sn.oprs.push(arg);
-        return sn;
+        return createSN('call').pushoprs(me,arg);
     },function(ce,arg) {
-        var sn = new structnode();
-        sn.structname = 'call';
-        sn.oprs.push(ce);
-        sn.oprs.push(arg);
-        return sn;
+        return createSN('call').pushoprs(ce,arg);
     },function(ce,lq,e,rq) {
-        var sn = new structnode();
-        sn.structname = 'callgetmember';
-        sn.oprs.push(ce);
-        sn.oprs.push(e);
-        return sn;
+        return createSN('callgetmember').pushoprs(ce,e);
     },function(ce,dot,id) {
-        var sn = new structnode();
-        sn.structname = 'callgetmember';
-        sn.oprs.push(ce);
-        sn.oprs.push(id);
-        return sn;
+        return createSN('callgetmember').pushoprs(ce,id);
     }]],
 	"Arguments" : ["'(' ')' | '(' ArgumentList ')'",[function() {
-        var sn = new structnode();
-        sn.structname = 'args';
-        return sn;
+        return createSN('args');
     },function(lq,arglist,rq) {
-        var sn = new structnode();
-        sn.structname = 'args';
+        var sn = createSN('args');
         sn.oprs = arglist;
         return sn;
     }]],
@@ -396,376 +339,179 @@ var grammar = {
 	"PostfixExpression" : ["LeftHandSideExpression | LeftHandSideExpression '++' | LeftHandSideExpression '--'",[function(a) {
         return a;
     },function(a) {
-        var sn = new structnode();
-        sn.structname = 'post++';
-        sn.oprs.push(a);
-        return sn;
+        return createSN('post++').pushoprs(a);
     },function(a) {
-        var sn = new structnode();
-        sn.structname = 'post--';
-        sn.oprs.push(a);
-        return sn;
+        return createSN('post--').pushoprs(a);
     }]],
 	"UnaryExpression" : ["PostfixExpression | delete UnaryExpression | void UnaryExpression | typeof UnaryExpression | '++' UnaryExpression | '--' UnaryExpression | '+' UnaryExpression | '-' UnaryExpression | '~' UnaryExpression | '!' UnaryExpression",[function(pe) {
         return pe;
     },function(de,ue) {
-        var sn = new structnode();
-        sn.structname = 'delete';
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('delete').pushoprs(ue);
     },function(vo,ue) {
-        var sn = new structnode();
-        sn.structname = 'void';
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('void').pushoprs(ue);
     },function(to,ue) {
-        var sn = new structnode();
-        sn.structname = 'typeof';
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('typeof').pushoprs(ue);
     },function(prefixadd,ue) {
-        var sn = new structnode();
-        sn.structname = 'prefix++';
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('prefix++').pushoprs(ue);
     },function(prefixminus,ue) {
-        var sn = new structnode();
-        sn.structname = 'prefix--';
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('prefix--').pushoprs(ue);
     },function(positive,ue) {
-        var sn = new structnode();
-        sn.structname = 'positive';
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('positive').pushoprs(ue);
     },function(negative,ue) {
-        var sn = new structnode();
-        sn.structname = 'negative';
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('negative').pushoprs(ue);
     },function(inverse,ue) {
-        var sn = new structnode();
-        sn.structname = '~';
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('~').pushoprs(ue);
     },function(not,ue) {
-        var sn = new structnode();
-        sn.structname = '!';
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('!').pushoprs(ue);
     }]],
 	"MultiplicativeExpression" : ["UnaryExpression | MultiplicativeExpression '*' UnaryExpression | MultiplicativeExpression '/' UnaryExpression | MultiplicativeExpression '%' UnaryExpression",[function(ue) {
         return ue;
     },function(me,mul,ue) {
-        var sn = new structnode();
-        sn.structname = '*';
-        sn.oprs.push(me);
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('*').pushoprs(me,ue);
     },function(me,div,ue) {
-        var sn = new structnode();
-        sn.structname = '/';
-        sn.oprs.push(me);
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('/').pushoprs(me,ue);
     },function(me,mod,ue) {
-        var sn = new structnode();
-        sn.structname = '%';
-        sn.oprs.push(me);
-        sn.oprs.push(ue);
-        return sn;
+        return createSN('%').pushoprs(me,ue);
     }]],
 	"AdditiveExpression" : ["MultiplicativeExpression | AdditiveExpression '+' MultiplicativeExpression | AdditiveExpression '-' MultiplicativeExpression",[function(me) {
         return me;
     },function(ae,add,me) {
-        var sn = new structnode();
-        sn.structname = '+';
-        sn.oprs.push(ae);
-        sn.oprs.push(me);
-        return sn;
+        return createSN('+').pushoprs(ae,me);
     },function(ae,minus,me) {
-        var sn = new structnode();
-        sn.structname = '-';
-        sn.oprs.push(ae);
-        sn.oprs.push(me);
-        return sn;
+        return createSN('-').pushoprs(ae,me);
     }]],
 	"ShiftExpression" : ["AdditiveExpression | ShiftExpression '<<' AdditiveExpression | ShiftExpression '>>' AdditiveExpression | ShiftExpression '>>>' AdditiveExpression",[function(ae) {
         return ae;
     },function(se,leftshift,ae) {
-        var sn = new structnode();
-        sn.structname = '<<';
-        sn.oprs.push(se);
-        sn.oprs.push(ae);
-        return sn;
+        return createSN('<<').pushoprs(se,ae);
     },function(se,rightshift,ae) {
-        var sn = new structnode();
-        sn.structname = '>>';
-        sn.oprs.push(se);
-        sn.oprs.push(ae);
-        return sn;
+        return createSN('>>').pushoprs(se,ae);
     },function(se,rightshift,ae) {
-        var sn = new structnode();
-        sn.structname = '>>>';
-        sn.oprs.push(se);
-        sn.oprs.push(ae);
-        return sn;
+        return createSN('>>>').pushoprs(se,ae);
     }]],
 	"RelationalExpression" : ["ShiftExpression | RelationalExpression '<' ShiftExpression | RelationalExpression '>' ShiftExpression | RelationalExpression '<=' ShiftExpression | RelationalExpression '>=' ShiftExpression | RelationalExpression instanceof ShiftExpression | RelationalExpression in ShiftExpression",[function(se) {
         return se;
     },function(re,lt,se) {
-        var sn = new structnode();
-        sn.structname = '<';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('<').pushoprs(re,se);
     },function(re,gt,se) {
-        var sn = new structnode();
-        sn.structname = '>';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('>').pushoprs(re,se);
     },function(re,lessequal,se) {
-        var sn = new structnode();
-        sn.structname = '<=';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('<=').pushoprs(re,se);
     },function(re,greatequal,se) {
-        var sn = new structnode();
-        sn.structname = '>=';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('>=').pushoprs(re,se);
     },function(re,ins,se) {
-        var sn = new structnode();
-        sn.structname = 'instanceof';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('instanceof').pushoprs(re,se);
     },function(re,i,se) {
-        var sn = new structnode();
-        sn.structname = 'in';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('in').pushoprs(re,se);
     }]],
 	"RelationalExpressionNoIn" : ["ShiftExpression | RelationalExpressionNoIn '<' ShiftExpression | RelationalExpressionNoIn '>' ShiftExpression | RelationalExpressionNoIn '<=' ShiftExpression | RelationalExpressionNoIn '>=' ShiftExpression | RelationalExpressionNoIn instanceof ShiftExpression",[function(se) {
         return se;
     },function(re,lt,se) {
-        var sn = new structnode();
-        sn.structname = '<';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('<').pushoprs(re,se);
     },function(re,gt,se) {
-        var sn = new structnode();
-        sn.structname = '>';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('>').pushoprs(re,se);
     },function(re,lessequal,se) {
-        var sn = new structnode();
-        sn.structname = '<=';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('<=').pushoprs(re,se);
     },function(re,greatequal,se) {
-        var sn = new structnode();
-        sn.structname = '>=';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('>=').pushoprs(re,se);
     },function(re,ins,se) {
-        var sn = new structnode();
-        sn.structname = 'instanceof';
-        sn.oprs.push(re);
-        sn.oprs.push(se);
-        return sn;
+        return createSN('instanceof').pushoprs(re,se);
     }]],
 	"EqualityExpression" : ["RelationalExpression | EqualityExpression '==' RelationalExpression | EqualityExpression '!=' RelationalExpression | EqualityExpression '===' RelationalExpression | EqualityExpression '!==' RelationalExpression",[function(re) {
         return re;
     },function(ee,equal,re) {
-        var sn = new structnode();
-        sn.structname = '==';
-        sn.oprs.push(ee);
-        sn.oprs.push(re);
-        return sn;
+        return createSN('==').pushoprs(ee,re);
     },function(ee,notequal,re) {
-        var sn = new structnode();
-        sn.structname = '!=';
-        sn.oprs.push(ee);
-        sn.oprs.push(re);
-        return sn;
+        return createSN('!=').pushoprs(ee,re);
     },function(ee,realequal,re) {
-        var sn = new structnode();
-        sn.structname = '===';
-        sn.oprs.push(ee);
-        sn.oprs.push(re);
-        return sn;
+        return createSN('===').pushoprs(ee,re);
     },function(ee,notrealequal,re) {
-        var sn = new structnode();
-        sn.structname = '!==';
-        sn.oprs.push(ee);
-        sn.oprs.push(re);
-        return sn;
+        return createSN('!==').pushoprs(ee,re);
     }]],
 	"EqualityExpressionNoIn" : ["RelationalExpressionNoIn | EqualityExpressionNoIn '==' RelationalExpressionNoIn | EqualityExpressionNoIn '!=' RelationalExpressionNoIn | EqualityExpressionNoIn '===' RelationalExpressionNoIn | EqualityExpressionNoIn '!==' RelationalExpressionNoIn",[function(re) {
         return re;
     },function(ee,equal,re) {
-        var sn = new structnode();
-        sn.structname = '==';
-        sn.oprs.push(ee);
-        sn.oprs.push(re);
-        return sn;
+        return createSN('==').pushoprs(ee,re);
     },function(ee,notequal,re) {
-        var sn = new structnode();
-        sn.structname = '!=';
-        sn.oprs.push(ee);
-        sn.oprs.push(re);
-        return sn;
+        return createSN('!=').pushoprs(ee,re);
     },function(ee,realequal,re) {
-        var sn = new structnode();
-        sn.structname = '===';
-        sn.oprs.push(ee);
-        sn.oprs.push(re);
-        return sn;
+        return createSN('===').pushoprs(ee,re);
     },function(ee,notrealequal,re) {
-        var sn = new structnode();
-        sn.structname = '!==';
-        sn.oprs.push(ee);
-        sn.oprs.push(re);
-        return sn;
+        return createSN('!==').pushoprs(ee,re);
     }]],
 	"BitwiseANDExpression" : ["EqualityExpression | BitwiseANDExpression '&' EqualityExpression",[function(ee) {
         return ee;
     },function(be,at,ee) {
-        var sn = new structnode();
-        sn.structname = '&';
-        sn.oprs.push(be);
-        sn.oprs.push(ee);
-        return sn;
+        return createSN('&').pushoprs(be,ee);
     }]],
 	"BitwiseANDExpressionNoIn" : ["EqualityExpressionNoIn | BitwiseANDExpressionNoIn '&' EqualityExpressionNoIn",[function(ee) {
         return ee;
     },function(be,at,ee) {
-        var sn = new structnode();
-        sn.structname = '&';
-        sn.oprs.push(be);
-        sn.oprs.push(ee);
-        return sn;
+        return createSN('&').pushoprs(be,ee);
     }]],
 	"BitwiseXORExpression" : ["BitwiseANDExpression | BitwiseXORExpression '^' BitwiseANDExpression",[function(be) {
         return be;
     },function(bxe,xor,bae) {
-        var sn = new structnode();
-        sn.structname = '^';
-        sn.oprs.push(bxe);
-        sn.oprs.push(bae);
-        return sn;
+        return createSN('^').pushoprs(bxe,bae);
     }]],
 	"BitwiseXORExpressionNoIn" : ["BitwiseANDExpressionNoIn | BitwiseXORExpressionNoIn '^' BitwiseANDExpressionNoIn",[function(be) {
         return be;
     },function(bxe,xor,bae) {
-        var sn = new structnode();
-        sn.structname = '^';
-        sn.oprs.push(bxe);
-        sn.oprs.push(bae);
-        return sn;
+        return createSN('^').pushoprs(bxe,bae);
     }]],
 	"BitwiseORExpression" : ["BitwiseXORExpression | BitwiseORExpression '|' BitwiseXORExpression",[function(bxe) {
         return bxe;
     },function(boe,or,bxe) {
-        var sn = new structnode();
-        sn.structname = '|';
-        sn.oprs.push(boe);
-        sn.oprs.push(bxe);
-        return sn;
+        return createSN('|').pushoprs(boe,bxe);
     }]],
 	"BitwiseORExpressionNoIn" : ["BitwiseXORExpressionNoIn | BitwiseORExpressionNoIn '|' BitwiseXORExpressionNoIn",[function(bxe) {
         return bxe;
     },function(boe,or,bxe) {
-        var sn = new structnode();
-        sn.structname = '|';
-        sn.oprs.push(boe);
-        sn.oprs.push(bxe);
-        return sn;
+        return createSN('|').pushoprs(boe,bxe);
     }]],
 	"LogicalANDExpression" : ["BitwiseORExpression | LogicalANDExpression '&&' BitwiseORExpression",[function(boe) {
         return boe;
     },function(lae,and,boe) {
-        var sn = new structnode();
-        sn.structname = '&&';
-        sn.oprs.push(lae);
-        sn.oprs.push(boe);
-        return sn;
+        return createSN('&&').pushoprs(lae,boe);
     }]],
 	"LogicalANDExpressionNoIn" : ["BitwiseORExpressionNoIn | LogicalANDExpressionNoIn '&&' BitwiseORExpressionNoIn",[function(boe) {
         return boe;
     },function(lae,and,boe) {
-        var sn = new structnode();
-        sn.structname = '&&';
-        sn.oprs.push(lae);
-        sn.oprs.push(boe);
-        return sn;
+        return createSN('&&').pushoprs(lae,boe);
     }]],
 	"LogicalORExpression" : ["LogicalANDExpression | LogicalORExpression '||' LogicalANDExpression",[function(lae) {
         return lae;
     },function(loe,lor,lae) {
-        var sn = new structnode();
-        sn.structname = '||';
-        sn.oprs.push(loe);
-        sn.oprs.push(lae);
-        return sn;
+        return createSN('||').pushoprs(loe,lae);
     }]],
 	"LogicalORExpressionNoIn" : ["LogicalANDExpressionNoIn | LogicalORExpressionNoIn '||' LogicalANDExpressionNoIn",[function(lae) {
         return lae;
     },function(loe,lor,lae) {
-        var sn = new structnode();
-        sn.structname = '||';
-        sn.oprs.push(loe);
-        sn.oprs.push(lae);
-        return sn;
+        return createSN('||').pushoprs(loe,lae);
     }]],
 	"ConditionalExpression" : ["LogicalORExpression | LogicalORExpression '?' AssignmentExpression ':' AssignmentExpression",[function(loe) {
         return loe;
     },function(loe,question,ae1,m,ae2) {
-        var sn = new structnode();
-        sn.structname = 'condexp';
-        sn.oprs.push(loe,ae1,ae2)
+        return createSN('condexp').pushoprs(loe,ae1,ae2);
     }]],
 	"ConditionalExpressionNoIn" : ["LogicalORExpressionNoIn | LogicalORExpressionNoIn '?' AssignmentExpression ':' AssignmentExpressionNoIn",[function(loe) {
         return loe;
     },function(loe,question,ae1,m,ae2) {
-        var sn = new structnode();
-        sn.structname = 'condexp';
-        sn.oprs.push(loe,ae1,ae2)
+        return createSN('condexp').pushoprs(loe,ae1,ae2);
     }]],
 	"AssignmentExpression" : ["ConditionalExpression | LeftHandSideExpression '=' AssignmentExpression | LeftHandSideExpression AssignmentOperator AssignmentExpression",[function(ce) {
         return ce;
     },function(le,assign,ae) {
-        var sn = new structnode();
-        sn.structname = '=';
-        sn.oprs.push(le,ae);
-        return sn;
+        return createSN('=').pushoprs(le,ae);
     },function(le,assign,ae) {
-        var sn = new structnode();
-        sn.structname = assign;
-        sn.oprs.push(le,ae);
-        return sn;
+        return createSN(assign).pushoprs(le,ae);
     }]],
 	"AssignmentExpressionNoIn" : ["ConditionalExpressionNoIn | LeftHandSideExpression '=' AssignmentExpressionNoIn | LeftHandSideExpression AssignmentOperator AssignmentExpressionNoIn",[function(ce) {
         return ce;
     },function(le,assign,ae) {
-        var sn = new structnode();
-        sn.structname = '=';
-        sn.oprs.push(le,ae);
-        return sn;
+        return createSN('=').pushoprs(le,ae);
     },function(le,assign,ae) {
-        var sn = new structnode();
-        sn.structname = assign;
-        sn.oprs.push(le,ae);
-        return sn;
+        return createSN(assign).pushoprs(le,ae);
     }]],
 	"AssignmentOperator" : ["'*=' | '/=' | '%=' | '+=' | '-=' | '<<=' | '>>=' | '>>>=' | '&=' | '^=' | '|='",[function() {
         return '*=';
@@ -791,10 +537,7 @@ var grammar = {
         return '|='
     }]],
 	"Expression" : ["AssignmentExpression | Expression ',' AssignmentExpression",[function(ae) {
-        var sn = new structnode();
-        sn.structname = 'exp';
-        sn.oprs.push(ae);
-        return sn;
+        return createSN('exp').pushoprs(ae);
     },function(e,q,ae) {
         e.oprs.push(ae);
         return e;
@@ -864,37 +607,25 @@ var grammar = {
 	[function(id,init) {
         curscope.table[id] = undefined;
         if(init != "GRAMMAR_EMPTY") {
-            var sn = new structnode();
-            sn.structname = 'init';
-            var s = new structnode();
-            s.structname = 'id';
-            s.oprs.push(id);
+            var sn = createSN('init');
+            var s = createSN('id').pushoprs(id);
             sn.oprs.push(s);
             sn.oprs.push(init);
             return sn;
         } else {
-            var s = new structnode();
-            s.structname = 'id';
-            s.oprs.push(id);
-            return s;
+            return createSN('id').pushoprs(id);
         }
 	}]],
 	"VariableDeclarationNoIn" : ["Identifier InitialiserNoIn ?",[function(id,init) {
         curscope.table[id] = undefined;
         if(init != "GRAMMAR_EMPTY") {
-            var sn = new structnode();
-            sn.structname = 'init';
-            var s = new structnode();
-            s.structname = 'id';
-            s.oprs.push(id);
+            var sn = createSN('init');
+            var s = createSN('id').pushoprs(id);
             sn.oprs.push(s);
             sn.oprs.push(init);
             return sn;
         } else {
-            var s = new structnode();
-            s.structname = 'id';
-            s.oprs.push(id);
-            return s;
+            return createSN('id').pushoprs(id);
         }
 	}]],
 	"Initialiser" : ["'=' AssignmentExpression",function(a,b){
@@ -904,39 +635,23 @@ var grammar = {
         return b;
     }],
 	"EmptyStatement" : ["';'",function() {
-        var sn = new structnode();
-        sn.structname = 'empty';
-        return sn;
+        return createSN('empty');
     }],
 	"ExpressionStatement" : ["Expression ';' ?",[function(a,b){
         return a;
     }]], //fixme : ExpressionStatement : [lookahead ∉ {{, function}] Expression ;
     "IfStatement" : ["if '(' Expression ')' Statement else Statement | if '(' Expression ')' Statement",
     [function(ifstr,lq,e,rq,s1,elsestr,s2) {
-        var sn = new structnode();
-        sn.structname = 'ifelse'
-        sn.oprs.push(e,s1,s2)
-        return sn;
+        return createSN('ifelse').pushoprs(e,s1,s2);
     },function(ifstr,lq,e,rq,s1) {
-        var sn = new structnode();
-        sn.structname = 'if'
-        sn.oprs.push(e,s1);
-        return sn;
+        return createSN('if').pushoprs(e,s1);
     }]],
 	"IterationStatement" : ["do Statement while '(' Expression ')' ';' ? | while '(' Expression ')' Statement | for '(' ExpressionNoIn ? ';' Expression ? ';' Expression ? ')' Statement | for '(' var VariableDeclarationListNoIn ';' Expression ? ';' Expression ? ')' Statement | for '(' LeftHandSideExpression in Expression ')' Statement | for '(' var VariableDeclarationNoIn in Expression ')' Statement",[
         function(d,s,w,lq,e,rq){
-            var sn = new structnode();
-            sn.structname = 'dowhile';
-            sn.oprs.push(e);
-            sn.oprs.push(s);
-            return sn;
+            return createSN('dowhile').pushoprs(e,s);
         },
         function(w,lq,e,rq,s){
-            var sn = new structnode();
-            sn.structname = 'while';
-            sn.oprs.push(e);
-            sn.oprs.push(s);
-            return sn;
+            return createSN('while').pushoprs(e,s);
         },
         function(f,lq,e1,semi1,e2,semi2,e3,rq,s){
             var sn = new structnode();
@@ -968,55 +683,31 @@ var grammar = {
             return sn;
         },
         function(forstr,lq,ls,instr,e,rq,s){
-            var sn = new structnode();
-            sn.structname = 'forin';
-            sn.oprs.push([ls,e]);
-            sn.oprs.push(s);
-            return sn;
+            return createSN('forin').pushoprs([ls,e],s);
         },
         function(forstr,lq,varstr,vd,instr,e,rq,s){
-           var sn = new structnode();
-           sn.structname = 'forin';
-           sn.oprs.push([vd,e]);
-           sn.oprs.push(s);
-           return sn;
+           return createSN('forin').pushoprs([vd,e],s);
         }
     ]],
 	"ContinueStatement" : ["continue ';' ? | continue Identifier ';' ?",function(){
-        var sn = new structnode();
-        sn.structname = 'continue';
-        return sn;
+        return createSN('continue');
     }],
 	"BreakStatement" : ["break ';' ? | break Identifier ';' ?",function(b){
-        var sn = new structnode();
-        sn.structname = 'break';
-        return sn;
+        return createSN('break');
     }],
 	"ReturnStatement" : ["return ';' ? | return Expression ';' ?",[
     function(r) {
-        var sn = new structnode();
-        sn.structname = 'return';
-        return sn
+        return createSN('return');
     },
     function(r,e,semi) {
-        var sn = new structnode();
-        sn.structname = 'return';
-        sn.oprs.push(e);
-        return sn
+        return createSN('return').pushoprs(e);
     }
   ]],
 	"WithStatement" : ["with '(' Expression ')' Statement",function(wstr,lq,e,rq,s) {
-        var sn = new structnode();
-        sn.structname = 'with';
-        sn.oprs.push(e,s);
-        return sn;
+        return createSN('with').pushoprs(e,s);
     }],
 	"SwitchStatement" : ["switch '(' Expression ')' CaseBlock",function(sw,lq,e,rp,cb){
-        var sn = new structnode();
-        sn.structname = 'switch';
-        sn.oprs.push(e);
-        sn.oprs.push(cb);
-        return sn;
+        return createSN('switch').pushoprs(e,cb);
     }],
 	"CaseBlock" : ["'{' CaseClauses ? '}' | '{' CaseClauses ? DefaultClause ? '}' | '{' CaseClauses ? DefaultClause ? CaseClauses '}'",[
         function(lq,cc,rq) {
@@ -1056,9 +747,7 @@ var grammar = {
     }]],
 	"CaseClause" : ["case Expression ':' StatementList ?",
     function(casestr,e,colon,st){
-        var sn = new structnode();
-        sn.structname = 'case';
-        sn.oprs.push(e);
+        var sn = createSN('case').pushoprs(e);
        if(st != "GRAMMAR_EMPTY") {
            sn.oprs.push(st);
        }
@@ -1066,8 +755,7 @@ var grammar = {
     }],
 	"DefaultClause" : ["default ':' StatementList ?",
     function(d,colon,stlist){
-        var sn = new structnode();
-        sn.structname = 'default';
+        var sn = createSN('default');
         if(stlist != "GRAMMAR_EMPTY") {
             sn.oprs.push(stlist)
         }
@@ -1111,18 +799,12 @@ var grammar = {
         curscope.prev.table[id] = node;
         curscope = curscope.prev;
         curfuncnodes.pop();
-        var sn = new structnode();
-        sn.structname = 'id';
-        sn.oprs.push(id);
-        return sn;
+        return createSN('id').pushoprs(id);
 	}],
 	"FormalParameterList" : ["Identifier | FormalParameterList ',' Identifier",
 	[
 		function(id) {
-            var sn = new structnode();
-            sn.structname = 'id';
-            sn.oprs.push(id);
-			return [sn];
+            return [createSN('id').pushoprs(id)];
 		},
 		function(flist,comma,id) {
             flist.push(id);
@@ -1180,12 +862,13 @@ function runfunc(node,args) {
             f.params = n.params;
             f.oprs = n.oprs;
             f.runscope = s;
+            //console.log('runscope',s)
             f.prototype = n.prototype;
             s.table[k] = f;
         }
     }
     s.table['this'] = node.context;
-    s.prev = node.runscope;
+    s.prev = node.runscope || globalscope;
     for(var i=0;i<node.params.length;i++) {
         s.table[node.params[i].oprs[0]] = args[i]
     }
@@ -1687,8 +1370,10 @@ export function sandbox() {
     };
     this.run = function(str) {
         p.parse(str);
+        console.log(globalscope);
         for(var i=0;i<globalfunc.oprs.length;i++) {
             runstatement(globalfunc.oprs[i],globalscope)
-        }
+        };
+        
     }
 };

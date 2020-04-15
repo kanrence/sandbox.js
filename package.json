@@ -5,11 +5,13 @@
   "main": "dist/sandbox.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "node build/build.js"
+    "build": "cross-env NODE_ENV=production node build/build.js",
+    "build:dev": "cross-env NODE_ENV=dev node build/build.js"
   },
   "author": "kanrence",
   "license": "MIT",
   "devDependencies": {
+    "cross-env": "^7.0.2",
     "webpack": "^4.42.1"
   }
 }
