@@ -44,7 +44,8 @@ var lexer = new Lexer([
 	{ lex_type : "IGNORE", lex_reg : /\s+/ } ], Lexer.priority.HEAD_FIRST);
 
 
-function EBNFParse1(g) { //替换GRAMMAR_QUOTE_SYM成GRAMMAR_SYM
+function EBNFParse1() { //替换GRAMMAR_QUOTE_SYM成GRAMMAR_SYM
+	var g = this.grammar;
 	for(var k in g) {
 		var list = lexer.parse(g[k][0]);
 		list.forEach(function (tk) {
@@ -57,7 +58,10 @@ function EBNFParse1(g) { //替换GRAMMAR_QUOTE_SYM成GRAMMAR_SYM
 	}
 }
 
-function EBNFParse2(g,privateSymbolMap,privateSymbolid) { //去括号
+function EBNFParse2() { //去括号
+	var g = this.grammar;
+	var privateSymbolMap = this.privateSymbolMap;
+	var privateSymbolid = this.privateSymbolid;
 	function handle(entry) {
 		for(var i = 0;i < entry.length;i++) {
 			if(entry[i].type === 'GRAMMAR_LEFT_BRACKET') {
@@ -95,7 +99,8 @@ function EBNFParse2(g,privateSymbolMap,privateSymbolid) { //去括号
 	return privateSymbolid;
 }
 
-function EBNFParse3(g) { //分割"|"
+function EBNFParse3() { //分割"|"
+	var g = this.grammar;
 	for(var k in g) {
 		var list = g[k][0];
 		g[k][0] = [];
@@ -112,7 +117,10 @@ function EBNFParse3(g) { //分割"|"
 	}
 }
 
-function EBNFParse4(g,privateSymbolMap,privateSymbolid) {
+function EBNFParse4() {
+	var g = this.grammar;
+	var privateSymbolMap = this.privateSymbolMap;
+	var privateSymbolid = this.privateSymbolid;
 	function simplify(entry) {
 		for(var i = 0;i < entry.length;i++) {
 			if(entry[i].type === 'GRAMMAR_ZERO_OR_MORE' || entry[i].type === 'GRAMMAR_ONE_OR_MORE' || entry[i].type === 'GRAMMAR_ZERO_OR_ONE') {
@@ -193,7 +201,9 @@ function EBNFParse4(g,privateSymbolMap,privateSymbolid) {
 	return privateSymbolid;
 }
 
-function checkSymbol(lexical,symbollist,grammar) {
+function checkSymbol(lexical) {
+	var symbollist = this.symbollist;
+	var grammar = this.grammar;
 	var lexicalSymbol = {};
 	lexical.forEach(function(e) {
 		lexicalSymbol[e.lex_type] = 1;
@@ -205,7 +215,9 @@ function checkSymbol(lexical,symbollist,grammar) {
 	});
 }
 
-function empty(X,emptySet,grammar) {
+function empty(X) {
+	var emptySet = this.emptySet;
+	var grammar = this.grammar;
 	if(X in emptySet) return emptySet[X];
 	var entrylist = grammar[X][0];
 	var ary = [];
@@ -238,7 +250,8 @@ function empty(X,emptySet,grammar) {
 	return false;
 }
 
-function tailEmpty(entry,from,emptySet) {
+function tailEmpty(entry,from) {
+	var emptySet = this.emptySet;
 	for(var i = from,len = entry.length;i < len;i++) {
 		if(!emptySet[entry[i].lexeme]) {
 			return false;
@@ -247,9 +260,11 @@ function tailEmpty(entry,from,emptySet) {
 	return true;
 }
 
-function follow(X,grammar,followSet,firstSet,firstCycle,emptySet) {/////这里要fix多个连续empty的非终结符
+function follow(X) {/////这里要fix多个连续empty的非终结符
+	var grammar = this.grammar;
+	var followSet = this.followSet;
 	var entrylist = grammar[X][0];
-	entrylist.forEach(function(entry) {
+	entrylist.forEach(entry => {
 		for(var i = 0,len = entry.length - 1;i < len;i++) {
 			if(!(entry[i].lexeme in grammar)) continue; //终结符不求follow
 			var s = entry[i].lexeme;
@@ -257,7 +272,7 @@ function follow(X,grammar,followSet,firstSet,firstCycle,emptySet) {/////这里�
 			followSet[s] = followSet[s] || [];
 			var f = followSet[s];
 			do {
-				var temp_f = first(entry[j].lexeme,undefined,firstSet,firstCycle,grammar,emptySet);
+				var temp_f = this.first(entry[j].lexeme,[]);
 				temp_f.forEach(function(elm) {
 					if(elm !== 'GRAMMAR_EMPTY' && f.indexOf(elm) < 0) {
 						f.push(elm);
@@ -266,7 +281,7 @@ function follow(X,grammar,followSet,firstSet,firstCycle,emptySet) {/////这里�
 				j++
 			} while(j < len && temp_f.indexOf('GRAMMAR_EMPTY') >= 0)
 			
-			if(tailEmpty(entry,i+1,emptySet)) {
+			if(this.tailEmpty(entry,i+1)) {
 				followSet[X] = followSet[X] || [];
 				if(followSet[s].indexOf(followSet[X]) < 0) {
 					followSet[s].push(followSet[X]);
@@ -284,7 +299,11 @@ function follow(X,grammar,followSet,firstSet,firstCycle,emptySet) {/////这里�
 	});
 }
 
-function first(X,path,firstSet,firstCycle,grammar,emptySet) {
+function first(X,path) {
+	var firstSet = this.firstSet;
+	var firstCycle = this.firstCycle;
+	var grammar = this.grammar;
+	var emptySet = this.emptySet;
 	if(firstSet[X]) return firstSet[X];
 	if(path.indexOf(X) >= 0) {
 		for(var i = 0,len = firstCycle.length;i < len;i++) {
@@ -317,10 +336,10 @@ function first(X,path,firstSet,firstCycle,grammar,emptySet) {
 		if(emptySet[X]) {
 			f.push('GRAMMAR_EMPTY');
 		}
-		entrylist.forEach(function(entry) {
+		entrylist.forEach(entry => {
 			for(var i = 0,len = entry.length;i < len;i++) {
 				if(entry[i].lexeme !== X) {
-					var temp_f = first(entry[i].lexeme,path,firstSet,firstCycle,grammar,emptySet);
+					var temp_f = this.first(entry[i].lexeme,path);
 					temp_f.forEach(function(elm) {
 						if(elm === 'GRAMMAR_EMPTY') return;
 						if(f.indexOf(elm) >= 0) return;
@@ -408,7 +427,11 @@ function flatten(set) {
 	}
 }
 
-function closure(J,grammar,closureMap,id2entity,entity2id) {
+function closure(J) {
+	var grammar = this.grammar;
+	var closureMap = this.closureMap;
+	var id2entity = this.id2entity;
+	var entity2id = this.entity2id;
 	for(var i = 0;i < J.length;i++) {
 		var temp_p = unpair(J[i]);
 		var t = grammar[id2entity[temp_p[0]]][0][temp_p[1]][temp_p[2]];
@@ -433,9 +456,17 @@ function closure(J,grammar,closureMap,id2entity,entity2id) {
 	}
 }
 
-function items(I,grammar,closureMap,ACTION,GOTO,id2entity,entity2id,IMapCache,starterpi,followSet) {
+function items() {
+	var I = this.I;
+	var grammar = this.grammar;
+	var ACTION = this.ACTION;
+	var GOTO = this.GOTO;
+	var id2entity = this.id2entity;
+	var IMapCache = this.IMapCache;
+	var starterpi = this.starterpi;
+	var followSet = this.followSet;
 	for(var i = 0;i < I.length;i++) {
-		closure(I[i],grammar,closureMap,id2entity,entity2id);
+		this.closure(I[i]);
 		var map = {};
 		I[i].forEach(function(elm) {
 			var p = unpair(elm);
@@ -487,264 +518,296 @@ function items(I,grammar,closureMap,ACTION,GOTO,id2entity,entity2id,IMapCache,st
 	}
 }
 
-function symbol(val) {
-	this.val = val;
+class symbol {
+	constructor(val) {
+		this.val = val;
+	}
+}
+
+
+function parse(str) {
+	var grammar = this.grammar;
+	var ACTION = this.ACTION;
+	var GOTO = this.GOTO;
+	var tokenlist = this.tokenizer.parse(str);
+	var id2entity = this.id2entity;
+	log('tokenlist',tokenlist);
+	if(!tokenlist || !tokenlist.length) return null;
+	tokenlist.push(new Lexer.token('', 'GRAMMAR_END'));
+	
+	var actstack = [];
+	var symbolStack = [];
+	var act = null;
+	var stack = [0],top = 0,i = 0,len = tokenlist.length,nexttoken = tokenlist[0];
+	while(1) {
+		if(i === len-1 && ACTION[stack[top]]['GRAMMAR_END'] && ACTION[stack[top]]['GRAMMAR_END'][0] === 'a') {
+			console.log('accept');
+			actstack = [];
+			break;
+		} else {
+			var actlist = undefined, n = null;
+			if(typeof ACTION[stack[top]][nexttoken.type] != 'undefined') {
+				actlist = ACTION[stack[top]][nexttoken.type];
+				n = nexttoken;
+			} else if(typeof ACTION[stack[top]]['GRAMMAR_EMPTY'] != 'undefined') {
+				actlist = ACTION[stack[top]]['GRAMMAR_EMPTY'];
+				n = new Lexer.token('GRAMMAR_EMPTY','GRAMMAR_EMPTY');
+			}
+			if(typeof actlist === 'undefined') {
+				while(actstack.length) {
+					var actitem = actstack[actstack.length-1];
+					if(actitem.cur === actitem.actlist.length - 1) {
+						if(actitem.n.type !== 'GRAMMAR_EMPTY' && typeof ACTION[actitem.stack[actitem.stack.length-1]]['GRAMMAR_EMPTY'] !== 'undefined') {
+							actitem.n = new Lexer.token('GRAMMAR_EMPTY','GRAMMAR_EMPTY');
+							actitem.actlist = ACTION[actitem.stack[actitem.stack.length-1]]['GRAMMAR_EMPTY'];
+							actitem.cur = -1;
+						} else {
+							actstack.pop();
+						}
+						continue;
+					} else {
+						log('again')
+						stack = actitem.stack;
+						i = actitem.i;
+						top = stack.length-1;
+						nexttoken = tokenlist[i];
+						n = actitem.n;
+						actitem.cur++;
+						act = actitem.actlist[actitem.cur];
+						symbolStack = actitem.symbolStack;
+						break;
+					}
+				}
+				if(!actstack.length) {
+					console.log('error');
+					actstack = [];
+					break;
+				}
+			} else {
+				actstack.push({actlist:actlist,i:i,n:n,stack:stack.slice(0),cur:0,symbolStack:symbolStack.slice(0)});
+				act = actlist[0];
+			}
+			if(act[0] === 'p') { //act : p i (i为项集下标)
+				stack.push(parseInt(act[1]));
+				log('push',n.lexeme)
+				symbolStack.push(new symbol(n.lexeme));
+				top++;
+				if(n.type != 'GRAMMAR_EMPTY') {
+					i++;
+					if(i < len) {
+						nexttoken = tokenlist[i];
+					}
+				}
+			} else if(act[0] === 'r') { //act ： r i j k (i j k为一个pair)
+				var s = id2entity[parseInt(act[1],10)];
+				log('reduce', s);
+				var ind = parseInt(act[2],10);
+				var entity = grammar[s][0][ind];
+				var reducer = null;
+				if(typeof grammar[s][1] === 'function') {
+					reducer = grammar[s][1];
+				} else if(grammar[s][1] instanceof Array) {
+					reducer = grammar[s][1][ind];
+				} else if(typeof grammar[s][1] === 'undefined') {
+					//reducer = reduceAsList;
+					reducer = function(){
+						return arguments[0];
+						//return [].join.call(arguments,'')
+					}
+				}
+				
+				//var reducer = grammar[s][1][ind];
+				var l = entity.length;
+				var args = [];
+				while(l--) {
+					args.push(symbolStack.pop());
+					stack.pop();
+					top--;
+				}
+				/*function reducer() {
+					return [].join.call([].filter.call(arguments,function(e){return e != 'GRAMMAR_EMPTY'}),' ');
+				}*/
+				var val = reducer.apply(null,args.reverse().map(function(a) {
+						return a.val;
+					}));
+				if(GOTO[stack[top]][s]) {
+					symbolStack.push(new symbol(val));
+					stack.push(GOTO[stack[top]][s]);
+					top++;
+				}
+			}
+		}
+	}
+	return symbolStack[0].val;
+}
+function destroy() {
+	this.tokenizer.destroy();
+	this.tokenizer = null;
+	this.lexer.destroy();
+	this.lexer = null;
+	this.GOTO = null;
+	this.ACTION = null;
+	for(var i in grammar) {
+		this.grammar[i] = null;
+	}
+}
+
+
+var Parser_proto = {
+	items: items,
+	closure: closure,
+	flatten: flatten,
+	first: first,
+	follow: follow,
+	tailEmpty: tailEmpty,
+	empty: empty,
+	checkSymbol: checkSymbol,
+	EBNFParse1: EBNFParse1,
+	EBNFParse2: EBNFParse2,
+	EBNFParse3: EBNFParse3,
+	EBNFParse4: EBNFParse4,
+
+	parse: parse,
+	destroy: destroy,
 }
 
 function Parser(lexical,priority,grammar,starter) {
-	var tokenizer = new Lexer(lexical,priority);
+	this.tokenizer = null;
+	this.id = 0;
+	this.starterpi = '';
+	this.grammar = null;
+	this.symbollist = [];
+	this.privateSymbolMap = {};
+	this.privateSymbolid = 1;
+	this.emptySet = {};
+	this.firstSet = {};
+	this.firstCycle = [];
+	this.followSet = {};
+	this.IMapCache = {};
+	this.closureMap = {};
+	this.GOTO = {};
+	this.ACTION = {};
+	this.I = [];
+	this.id2entity = {};
+	this.entity2id = {};
 
-	var id2entity = {},entity2id = {};
-	var id = 0;
-	var starterpi = starter+'_pi';
-	grammar[starterpi] = [starter,[function(){}]];
-	var symbollist = [];
-	var privateSymbolMap = {};
-	var privateSymbolid = 1;
-	
-	EBNFParse1(grammar);
-	privateSymbolid = EBNFParse2(grammar,privateSymbolMap,privateSymbolid);
-	EBNFParse3(grammar);
-	privateSymbolid = EBNFParse4(grammar,privateSymbolMap,privateSymbolid);
-	
-	for(var k in grammar) {
-		var lists = grammar[k][0];
-		lists.forEach(function (list) {
-			list.forEach(function(tk) {
-				if(tk.type === 'GRAMMAR_SYM' && symbollist.indexOf(tk.lexeme) < 0) {
-					symbollist.push(tk.lexeme);
-				}
+
+	this.starterpi = starter+'_pi';
+		this.tokenizer = new Lexer(lexical,priority);
+		this.grammar = grammar;
+		this.grammar[this.starterpi] = [starter,[function(){}]];
+
+		this.EBNFParse1();
+		this.EBNFParse2();
+		this.EBNFParse3();
+		this.EBNFParse4();
+
+		for(var k in grammar) {
+			var lists = grammar[k][0];
+			lists.forEach(list => {
+				list.forEach(tk => {
+					if(tk.type === 'GRAMMAR_SYM' && this.symbollist.indexOf(tk.lexeme) < 0) {
+						this.symbollist.push(tk.lexeme);
+					}
+				});
 			});
-		});
-		id2entity[id] = k;
-		entity2id[k] = id++;
-	}
-	
-
-
-	checkSymbol(lexical,symbollist,grammar)
-
-	log('privateSymbolMap',privateSymbolMap)
-	
-	log('id2entity',id2entity);
-	
-	var emptySet = {};
-	
-	symbollist.forEach(function(k) {
-		if(!(k in grammar)) {
-			emptySet[k] = false;
+			this.id2entity[this.id] = k;
+			this.entity2id[k] = this.id++;
 		}
-	});
-	
-	log('symbollist',symbollist);
 
-	var loopcount = symbollist.length;
-	while(1) {
-		if(!loopcount) break;
-		var hasUndefined = false;
-		symbollist.forEach(function(s) {
-			var ret = empty(s,emptySet,grammar);
-			if(typeof ret !== 'undefined') {
-				emptySet[s] = ret;
-			} else {
-				hasUndefined = true;
+		this.checkSymbol(lexical);
+
+		log('privateSymbolMap',this.privateSymbolMap)
+	
+		log('id2entity',this.id2entity);
+
+		this.symbollist.forEach(k => {
+			if(!(k in grammar)) {
+				this.emptySet[k] = false;
 			}
 		});
-		if(!hasUndefined) break;
-		loopcount--;
-	}
-	if(!loopcount) {
-		symbollist.forEach(function(s) {
-			if(!(s in emptySet)) {
-				emptySet[s] = false;
-			}
-		});
-	}
 
-	log('emptySet',emptySet);
+		log('symbollist',this.symbollist);
 
-	var firstSet = {};
-	var firstCycle = [];
-	
-	
-	symbollist.forEach(function(s) {
-		first(s,[],firstSet,firstCycle,grammar,emptySet);
-	});
-	log('firstCycle',firstCycle);
-	firstCycle.forEach(function(c) {
-		var newset = [];
-		c.forEach(function (elm) {
-			firstSet[elm].forEach(function(e) {
-				if(newset.indexOf(e) < 0) {
-					newset.push(e);
-				}
-			});
-			firstSet[elm] = newset;
-		});
-	});
-
-	log('first',firstSet);
-
-	var followSet = {};
-	followSet[starter] = ['GRAMMAR_END'];
-	
-	symbollist.forEach(function(s) {
-		if(s in grammar) {
-			follow(s,grammar,followSet,firstSet,firstCycle,emptySet);
-		}
-	});
-	flatten(followSet);
-
-	log('followSet',followSet);
-	
-	var I = [];
-	I[0] = [pair(entity2id[starterpi],0,0)];
-	var IMapCache = {};
-	IMapCache[I[0]] = 0;
-	var closureMap = {};
-	
-	var GOTO = {},ACTION = {};
-
-	items(I,grammar,closureMap,ACTION,GOTO,id2entity,entity2id,IMapCache,starterpi,followSet);
-	
-	log('grammar',grammar)
-	log('GOTO',GOTO);
-	log('ACTION',ACTION);
-	log('I',I)
-	
-	entity2id = null;
-	firstCycle = null;
-	privateSymbolMap = null;
-	firstSet = null;
-	emptySet = null;
-	followSet = null;
-	IMapCache = null;
-	I = null;
-	closureMap = null;
-	symbollist = null;
-	
-	this.parse = function(str) {
-		var tokenlist = tokenizer.parse(str);
-		log('tokenlist',tokenlist);
-		if(!tokenlist || !tokenlist.length) return null;
-		tokenlist.push(new Lexer.token('', 'GRAMMAR_END'));
-		
-		var actstack = [];
-		var symbolStack = [];
-		var act = null;
-		var stack = [0],top = 0,i = 0,len = tokenlist.length,nexttoken = tokenlist[0];
+		var loopcount = this.symbollist.length;
 		while(1) {
-			if(i === len-1 && ACTION[stack[top]]['GRAMMAR_END'] && ACTION[stack[top]]['GRAMMAR_END'][0] === 'a') {
-				console.log('accept');
-				actstack = [];
-				break;
-			} else {
-				var actlist = undefined, n = null;
-				if(typeof ACTION[stack[top]][nexttoken.type] != 'undefined') {
-					actlist = ACTION[stack[top]][nexttoken.type];
-					n = nexttoken;
-				} else if(typeof ACTION[stack[top]]['GRAMMAR_EMPTY'] != 'undefined') {
-					actlist = ACTION[stack[top]]['GRAMMAR_EMPTY'];
-					n = new Lexer.token('GRAMMAR_EMPTY','GRAMMAR_EMPTY');
-				}
-				if(typeof actlist === 'undefined') {
-					while(actstack.length) {
-						var actitem = actstack[actstack.length-1];
-						if(actitem.cur === actitem.actlist.length - 1) {
-							if(actitem.n.type !== 'GRAMMAR_EMPTY' && typeof ACTION[actitem.stack[actitem.stack.length-1]]['GRAMMAR_EMPTY'] !== 'undefined') {
-								actitem.n = new Lexer.token('GRAMMAR_EMPTY','GRAMMAR_EMPTY');
-								actitem.actlist = ACTION[actitem.stack[actitem.stack.length-1]]['GRAMMAR_EMPTY'];
-								actitem.cur = -1;
-							} else {
-								actstack.pop();
-							}
-							continue;
-						} else {
-							log('again')
-							stack = actitem.stack;
-							i = actitem.i;
-							top = stack.length-1;
-							nexttoken = tokenlist[i];
-							n = actitem.n;
-							actitem.cur++;
-							act = actitem.actlist[actitem.cur];
-							symbolStack = actitem.symbolStack;
-							break;
-						}
-					}
-					if(!actstack.length) {
-						console.log('error');
-						actstack = [];
-						break;
-					}
+			if(!loopcount) break;
+			var hasUndefined = false;
+			this.symbollist.forEach(s => {
+				var ret = this.empty(s);
+				if(typeof ret !== 'undefined') {
+					this.emptySet[s] = ret;
 				} else {
-					actstack.push({actlist:actlist,i:i,n:n,stack:stack.slice(0),cur:0,symbolStack:symbolStack.slice(0)});
-					act = actlist[0];
+					hasUndefined = true;
 				}
-				if(act[0] === 'p') { //act : p i (i为项集下标)
-					stack.push(parseInt(act[1]));
-					log('push',n.lexeme)
-					symbolStack.push(new symbol(n.lexeme));
-					top++;
-					if(n.type != 'GRAMMAR_EMPTY') {
-						i++;
-						if(i < len) {
-							nexttoken = tokenlist[i];
-						}
-					}
-				} else if(act[0] === 'r') { //act ： r i j k (i j k为一个pair)
-					var s = id2entity[parseInt(act[1],10)];
-					log('reduce', s);
-					var ind = parseInt(act[2],10);
-					var entity = grammar[s][0][ind];
-					var reducer = null;
-					if(typeof grammar[s][1] === 'function') {
-						reducer = grammar[s][1];
-					} else if(grammar[s][1] instanceof Array) {
-						reducer = grammar[s][1][ind];
-					} else if(typeof grammar[s][1] === 'undefined') {
-						//reducer = reduceAsList;
-                        reducer = function(){
-                            return arguments[0];
-                            //return [].join.call(arguments,'')
-                        }
-					}
-					
-					//var reducer = grammar[s][1][ind];
-					var l = entity.length;
-					var args = [];
-					while(l--) {
-						args.push(symbolStack.pop());
-						stack.pop();
-						top--;
-					}
-					/*function reducer() {
-						return [].join.call([].filter.call(arguments,function(e){return e != 'GRAMMAR_EMPTY'}),' ');
-					}*/
-					var val = reducer.apply(null,args.reverse().map(function(a) {
-							return a.val;
-						}));
-					if(GOTO[stack[top]][s]) {
-						symbolStack.push(new symbol(val));
-						stack.push(GOTO[stack[top]][s]);
-						top++;
-					}
+			});
+			if(!hasUndefined) break;
+			loopcount--;
+		}
+		if(!loopcount) {
+			this.symbollist.forEach(s => {
+				if(!(s in this.emptySet)) {
+					this.emptySet[s] = false;
 				}
+			});
+		}
+
+		log('emptySet',this.emptySet);
+		
+		this.symbollist.forEach( s => {
+			this.first(s,[]);
+		});
+		log('firstCycle',this.firstCycle);
+		this.firstCycle.forEach(c => {
+			var newset = [];
+			c.forEach(elm => {
+				this.firstSet[elm].forEach(e => {
+					if(newset.indexOf(e) < 0) {
+						newset.push(e);
+					}
+				});
+				this.firstSet[elm] = newset;
+			});
+		});
+
+		log('first',this.firstSet);
+
+		
+		this.followSet[starter] = ['GRAMMAR_END'];
+		
+		this.symbollist.forEach(s => {
+			if(s in grammar) {
+				this.follow(s);
 			}
-		}
-		return symbolStack[0].val;
-	}
-	this.destroy = function() {
-		tokenizer.destroy();
-		tokenizer = null;
-		lexer.destroy();
-		lexer = null;
-		GOTO = null;
-		ACTION = null;
-		for(var i in grammar) {
-			grammar[i] = null;
-		}
-	}
+		});
+		this.flatten(this.followSet);
+
+		log('followSet',this.followSet);
+		
+		
+		this.I[0] = [pair(this.entity2id[this.starterpi],0,0)];
+		
+		this.IMapCache[this.I[0]] = 0;
+		
+		this.items();
+		
+		log('grammar',this.grammar)
+		log('GOTO',this.GOTO);
+		log('ACTION',this.ACTION);
+		log('I',this.I)
+		
+		this.entity2id = null;
+		this.firstCycle = null;
+		this.privateSymbolMap = null;
+		this.firstSet = null;
+		this.emptySet = null;
+		this.followSet = null;
+		this.IMapCache = null;
+		this.I = null;
+		this.closureMap = null;
+		this.symbollist = null;
 }
+
+Parser.prototype = Parser_proto;
 
 export default Parser;

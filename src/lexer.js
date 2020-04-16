@@ -1,15 +1,7 @@
-function Lexer(lexical_ary,priority) {
-	if(priority === Lexer.priority.TAIL_FIRST) {
-		lexical_ary = lexical_ary.slice(0).reverse();
-		priority = Lexer.priority.HEAD_FIRST;
-	}
-	lexical_ary.forEach(function(rule,index) {
-		if(rule.lex_reg.source[0] !== '^') {
-			rule.lex_reg = new RegExp('^'+rule.lex_reg.source);
-		}
-	});
-	
-	this.parse = function(str) {
+var Lexer_proto = {
+	parse(str) {
+		var lexical_ary = this.lexical_ary;
+		var priority = this.priority;
 		if(!lexical_ary) return null;
 		var len = str.length;
 		var i = 0;
@@ -50,23 +42,38 @@ function Lexer(lexical_ary,priority) {
 			}
 		}
 		return list;
-	}
-	this.destroy = function() {
+	},
+	destroy() {
 		for(var i = 0,len = lexical_ary.length;i < len;i++) {
-			lexical_ary[i] = null;
+			this.lexical_ary[i] = null;
 		}
-		lexical_ary = null;
+		this.lexical_ary = null;
 	}
 }
-//多个正则表达式匹配的情况下，选取匹配项的优先级
+
+function Lexer (lexical_ary,priority) {
+	this.lexical_ary = lexical_ary;
+	this.priority = priority;
+	if(priority === Lexer.priority.TAIL_FIRST) {
+		lexical_ary = lexical_ary.slice(0).reverse();
+		priority = Lexer.priority.HEAD_FIRST;
+	}
+	lexical_ary.forEach(function(rule,index) {
+		if(rule.lex_reg.source[0] !== '^') {
+			rule.lex_reg = new RegExp('^'+rule.lex_reg.source);
+		}
+	});
+}
+
+Lexer.prototype = Lexer_proto;
+
 Lexer.priority = { 
 	HEAD_FIRST: 1, //桉传入的数组顺序，越靠前优先级越高
 	TAIL_FIRST: 2, //桉传入的数组顺序，越靠后优先级越高
 	LONG_FIRST: 3, //匹配到的长度越长，优先级越高
 	SHORT_FIRST: 4 //匹配到的长度越短，优先级越高
-};
-
-Lexer.token = function (val,type) {
+}
+Lexer.token = function(val,type) {
 	this.lexeme = val;
 	this.type = type;
 }

@@ -1,7 +1,7 @@
-const webpackConfig = require('./webpack.prod.config');
+const webpackConfig = require('./webpack.config');
 
 const webpack = require('webpack')
 
 webpack(webpackConfig, (err, stats) => {
-    
+    console.log(err)
 })

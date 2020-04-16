@@ -165,7 +165,7 @@ function findscope(id,scope) {
 }
 
 function createSN(name) {
-    let sn = new structnode();
+    var sn = new structnode();
     sn.structname = name;
     return sn;
 }
@@ -1364,7 +1364,7 @@ function runexp(exp,scope) {
 
 
 export function sandbox() {
-    let p = new Parser(lexical,Lexer.priority.LONG_FIRST,grammar,'Program');
+    var p = new Parser(lexical,Lexer.priority.LONG_FIRST,grammar,'Program');
     this.set = function(varname,obj) {
         globalscope.table[varname] = obj;
     };
