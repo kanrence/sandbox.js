@@ -98,8 +98,8 @@ var lexical = [
 	{ lex_type : '/=', lex_reg : /\/=/ },
 	{ lex_type : '=' , lex_reg : /=/ },
 	{ lex_type : 'NumericLiteral', lex_reg : /((0|[1-9][0-9]*)\.[0-9]*((e|E)(\+|-)?[0-9]+)?|\.[0-9]+((e|E)(\+|-)?[0-9]+)?|(0|[1-9][0-9]*)((e|E)(\+|-)?[0-9]+)?|0(x|X)[0-9a-fA-F]+)/ },
-	{ lex_type : 'StringLiteral', lex_reg : /("[^"]*"|'[^']*')/ }, //fixme not support escape sequence
-	//{ lex_type : 'RegularExpressionLiteral', lex_reg : // },
+	{ lex_type : 'StringLiteral', lex_reg : /("(\\"|[^"])*?"|'(\'|[^'])*?')/ }, //fixme not support escape sequence
+	{ lex_type : 'RegularExpressionLiteral', lex_reg : /\/(\\\/|[^/])*\/g?i?m?s?u?y?/ },
 	{ lex_type : "IGNORE", lex_reg : /(\s+|\/\/.*\n|\/\*(\n|.)*?\*\/)/ }
 ];
 
@@ -197,7 +197,7 @@ var grammar = {
 	"ReservedWord" : ["break | do | instanceof | typeof | case | else | new | var | catch | finally | return | void | continue | for | switch | while | debugger | function | this | with | default | if | throw | delete | in | try | class | enum | extends | super | const | export | import | NullLiteral | BooleanLiteral",function(a){
         return a;
     }],
-	"Literal" : ["NullLiteral | BooleanLiteral | NumericLiteral | StringLiteral",[function(n){
+	"Literal" : ["NullLiteral | BooleanLiteral | NumericLiteral | StringLiteral | RegularExpressionLiteral",[function(n){
         return createSN('nullliter');
     },function(b) {
         return createSN('boolliter').pushoprs(b);
@@ -205,6 +205,8 @@ var grammar = {
         return createSN('numliter').pushoprs(num);
     },function(str) {
         return createSN('strliter').pushoprs(str.slice(1,str.length-1));
+    },function(str) {
+        return createSN('regexpliter').pushoprs(str);
     }]],
 	"PrimaryExpression" : ["this | Identifier | Literal | ArrayLiteral | ObjectLiteral | '(' Expression ')'",[function(t) {
         return createSN('this');
@@ -1136,6 +1138,16 @@ function runexp(exp,scope) {
         return parseFloat(exp.oprs[0]);
     } else if(exp.structname == 'strliter') {
         return exp.oprs[0];
+    } else if(exp.structname == 'regexpliter') {
+        var str = exp.oprs[0];
+        var ind = str.length-1;
+        while(ind >= 0) {
+            if(str[ind] == '/') {
+                break;
+            }
+            ind--;
+        }
+        return new RegExp(str.substring(1,ind),str.substring(ind+1));
     } else if(exp.structname == 'boolliter') {
         if(exp.oprs[0] == 'true') {
             return true;

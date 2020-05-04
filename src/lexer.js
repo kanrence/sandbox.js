@@ -36,6 +36,7 @@ var Lexer_proto = {
 					list.push(new Lexer.token(r[0],k));
 				}
 				str = str.substring(r[0].length);
+				if(r[0].length == 0) return null;
 				i += r[0].length;
 			} else {
 				return null;
