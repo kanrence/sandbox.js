@@ -1386,6 +1386,17 @@ export function sandbox() {
         for(var i=0;i<globalfunc.oprs.length;i++) {
             runstatement(globalfunc.oprs[i],globalscope)
         };
-        
+    };
+    this.get = function(varname) {
+        return globalscope.table[varname];
+    };
+    this.call = function(funcname, _this, args) {
+        var fn = globalscope.table[funcname];
+        if(!(fn instanceof funcnode)) {
+            throw new Error(funcname+" is not a function");
+        }
+        args = args || [];
+        args.unshift(_this);
+        return fn.call.apply(fn,args);
     }
 };
