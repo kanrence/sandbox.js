@@ -14,6 +14,12 @@ function inner() {
 }
 hello();
 inner();
+function callme(a) {
+    return a+1;
+}
+var getme = "GETME";
 `
 vm.run(code);
+console.log(vm.call("callme",null,[1])); // 2
+console.log(vm.get("getme")); // GETME
 ```
